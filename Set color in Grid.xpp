@@ -1,0 +1,22 @@
+[DataSource]
+class PurchLine
+{
+    /// <summary>
+    /// Set color in grid if PuchLine.PurchPrice is 0
+    /// </summary>
+    /// <param name = "_record">PurchLine</param>
+    /// <param name = "_options">Option</param>
+    public void displayOption(Common _record, FormRowDisplayOption _options)
+    {
+        PurchLine purchLineDisplay;
+        purchLineDisplay = _record.data();
+        if(!purchLineDisplay.PurchPrice)
+        {
+            _options.textColor(WinAPI::RGB2int(255,0,0)); // Font color to Red
+            _options.backColor(WinAPI::RGB2int(0,255,0)); // Background color to Green
+            _options.fontBold(true) // Font bold
+        }
+
+        super(_record, _options);
+    }
+ }
