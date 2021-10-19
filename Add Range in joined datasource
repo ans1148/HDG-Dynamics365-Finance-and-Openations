@@ -1,0 +1,25 @@
+[DataSource]
+class PurchLine
+{
+    /// <summary>
+    /// Add Range joined table or datasource
+    /// </summary>
+    public void executeQuery()
+    {
+        // clear Ranges
+        this.queryBuildDataSource().clearRanges();
+        this.query().dataSourceTable(tableNum(PurchTable)).clearRanges();
+        this.query().dataSourceName(InventItemGroupItemPurch_ds.name()).clearRanges();
+
+        this.query().dataSourceTable(tableNum(PurchTable)).addRange(fieldNum(PurchTable, OrderAccount)).value(dialogVendAccount.valueStr()); // Add Range to PurchTable
+        this.query().dataSourceTable(tableNum(PurchTable)).addRange(fieldNum(PurchTable, DeliveryDate)).value
+            (queryRange(dialogPurchaseFromDate.dateValue(),dialogPurchaseToDate.dateValue())); // Add Date Value Range
+        if(dialogPurchItemGroup.valueStr())
+        {
+            // Add Range to named InventItemGroupItemPurch datasource
+            this.query().dataSourceName(InventItemGroupItemPurch_ds.name()).addRange(fieldNum(InventItemGroupItem, ItemGroupId)).value(dialogPurchItemGroup.valueStr());
+        }
+
+        super();
+    }
+}
