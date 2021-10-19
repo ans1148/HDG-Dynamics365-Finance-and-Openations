@@ -25,13 +25,10 @@ public class PurchaseIntegrationEntry_Purchase extends FormRun
         super();
         
         PurchTable_ds.create();
-
-        numberSeq = NumberSeq::newGetNum(PurchParameters::numRefPurchId());
-        numberSeq.used();
-
-        PurchTable.PurchId = numberSeq.num();
+        
         PurchTable.PurchaseType = PurchParameters::find().PurchaseType;
         purchTableType = PurchTable.type();
+        purchTableType.formMethodDataSourceCreate(element, PurchTable_ds);
         purchTableType.initValue();
         
         PurchTable_ds.refresh();
