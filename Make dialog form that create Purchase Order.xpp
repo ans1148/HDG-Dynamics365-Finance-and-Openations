@@ -1,0 +1,88 @@
+// If we want to make form that create purchase order, it seems difficult.
+// Because when we want to make insert into PurchLine, it is difficult to represent in PurchLine.ModifiedField Method.
+// Let's look at PurchTable Form that can make purchase order as standard logic.
+// As you can see there are many modified method in PurchLine datasource not in PurchLine Table.
+// So, we need to reference PurchLine Method in PurchTable Form.
+// This example is constructed by inserting only the mandatory fields.
+
+/********************************************************************
+note : We must joined table between PurchTable and PurchLine as Delayed
+*********************************************************************/
+
+[Form]
+public class PurchaseIntegrationEntry_Purchase extends FormRun
+{
+    PurchTable      parmPurchTable;
+
+    /// <summary>
+    /// Initialize PurchTable
+    /// </summary>
+    public void init()
+    {
+        PurchTableType  purchTableType;
+        NumberSeq       numberSeq;
+        
+        super();
+        
+        PurchTable_ds.create();
+
+        numberSeq = NumberSeq::newGetNum(PurchParameters::numRefPurchId());
+        numberSeq.used();
+
+        PurchTable.PurchId = numberSeq.num();
+        PurchTable.PurchaseType = PurchParameters::find().PurchaseType;
+        purchTableType = PurchTable.type();
+        purchTableType.initValue();
+        
+        PurchTable_ds.refresh();
+    }
+    
+    [DataSource]
+    class PurchLine
+    {
+        /// <summary>
+        /// Initialize PurchLine
+        /// </summary>
+        /// <param name = "_append">append</param>
+        public void create(boolean _append = false)
+        {
+            super(_append);
+
+            PurchLine.initFromPurchTable(PurchTable_ds.getFirst());
+        }
+
+        /// <summary>
+        /// Insert remain value
+        /// </summary>
+        public void write()
+        {
+            // If there have not below code, Purchase order will have 'Canceled' status.
+            PurchLine.QtyOrdered = PurchLine.calcQtyOrdered();
+
+            PurchLine.RemainPurchPhysical           = PurchLine.PurchQty;
+            PurchLine.RemainPurchFinancial          = 0;
+            PurchLine.RemainInventPhysical          = PurchLine.QtyOrdered;
+            PurchLine.RemainInventFinancial         = 0;
+            PurchLine.PdsCWRemainInventPhysical     = PurchLine.PdsCWQty;
+            PurchLine.PdsCWRemainInventFinancial    = 0;
+
+            super();
+        }
+        
+        [DataField]
+        class ItemId 
+        {
+            /// <summary>
+            /// When item is modified, set standard data
+            /// </summary>
+            public void modified()
+            {
+                super();
+                
+                purchLine_ds.cacheCalculateMethod(tableMethodStr(PurchLine, itemName));
+                PurchLineType purchLineType = PurchLine.type();
+                purchLineType.initFromInventTable(InventTable::find(PurchLine.ItemId));
+            }
+
+        }
+}
