@@ -54,6 +54,8 @@ public class PurchaseIntegrationEntry_Purchase extends FormRun
         public void write()
         {
             // If there have not below code, Purchase order will have 'Canceled' status.
+            /****************************************************
+            // Instead of below code then used to purchLineType.defaultFromField method
             PurchLine.QtyOrdered = PurchLine.calcQtyOrdered();
 
             PurchLine.RemainPurchPhysical           = PurchLine.PurchQty;
@@ -62,7 +64,7 @@ public class PurchaseIntegrationEntry_Purchase extends FormRun
             PurchLine.RemainInventFinancial         = 0;
             PurchLine.PdsCWRemainInventPhysical     = PurchLine.PdsCWQty;
             PurchLine.PdsCWRemainInventFinancial    = 0;
-
+            *******************************************************/
             super();
         }
         
@@ -70,7 +72,7 @@ public class PurchaseIntegrationEntry_Purchase extends FormRun
         class ItemId 
         {
             /// <summary>
-            /// When item is modified, set standard data
+            /// If item is modified, set standard data
             /// </summary>
             public void modified()
             {
@@ -78,8 +80,86 @@ public class PurchaseIntegrationEntry_Purchase extends FormRun
                 
                 purchLine_ds.cacheCalculateMethod(tableMethodStr(PurchLine, itemName));
                 PurchLineType purchLineType = PurchLine.type();
-                purchLineType.initFromInventTable(InventTable::find(PurchLine.ItemId));
+                purchLineType.defaultFromField(fieldNum(PurchLine,ItemId), true);
             }
 
+        }
+
+        [DataField]
+        class PriceUnit 
+        {
+            /// <summary>
+            /// If Unit is modified, set standard data 
+            /// </summary>
+            public void modified()
+            {
+                super();
+
+                PurchLineType purchLineType = PurchLine.type();
+                purchLineType.defaultFromField(fieldNum(PurchLine,PurchUnit), true);
+            }
+
+        }
+
+        [DataField]
+        class PurchQty 
+        {
+            /// <summary>
+            /// If Qty is modified, set standard data
+            /// </summary>
+            public void modified()
+            {
+                super();
+
+                PurchLineType purchLineType = PurchLine.type();
+                purchLineType.defaultFromField(fieldNum(PurchLine,PurchQty), true);
+            }
+
+        }
+
+        // This is Confirmation and Product receipt Method
+        /// <summary>
+        /// When Closed Ok, check Prodcut receipt button and process
+        /// </summary>
+        /// <returns>Close status</returns>
+        public boolean canClose()
+        {
+            boolean ret;
+            
+            PurchFormLetter purchFormLetterConfirm, purchFormLetterPackingSlip;
+
+            ret = super();
+
+            if(element.closedOk() && ProductReceiptCheck.value())
+            {
+                if(Box::yesNo("Do you want Product Receipt?", DialogButton::Yes, "Product Receipt"))
+                {
+                    if(!ProductReceiptNumber.valueStr())
+                    {
+                        throw error("@DHB:DHB0036");
+                    }
+                    try
+                    {
+                        ttsbegin;
+
+                        purchFormLetterConfirm = PurchFormLetter::construct(DocumentStatus::PurchaseOrder);
+                        purchFormLetterConfirm.update(PurchTable, purchFormLetterConfirm.parmParmTableNum());
+                        purchFormLetterPackingSlip = PurchFormLetter::construct(DocumentStatus::PackingSlip);
+                        purchFormLetterPackingSlip.update(PurchTable, ProductReceiptNumber.valueStr());
+
+                        ttscommit;
+                    }
+                    catch(Exception::Error)
+                    {
+                        ret = false;
+                    }
+                }
+                else
+                {
+                    ret = false;
+                }
+            }
+        
+            return ret;
         }
 }
