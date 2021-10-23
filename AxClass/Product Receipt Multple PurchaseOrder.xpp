@@ -1,0 +1,105 @@
+class MultipleProductReceipt
+{
+    /// <summary>
+    /// Process purchase order packing slip using chooseLinesQuery method.
+    /// </summary>
+    public static void UsingQuery()
+    {
+        Query               query;
+        SysQueryRun         queryRun;
+        PurchFormLetter     purchFormLetter;
+        PurchTable          purchTable;
+        
+        // Set query
+        query = new Query(queryStr(PurchUpdate));
+
+        // Select purchase order
+        query.dataSourceTable(tableNum(PurchTable)).addRange(fieldNum(PurchTable, PurchId)).value('PO002516');
+        query.dataSourceTable(tableNum(PurchTable)).addRange(fieldNum(PurchTable, PurchId)).value('PO002531');
+        queryRun = new SysQueryRun(query);
+
+        // Declare PurchFormLetter
+        purchFormLetter = PurchFormLetter::construct(DocumentStatus::PackingSlip);
+        purchFormLetter.chooseLinesQuery(queryRun);
+        purchFormLetter.chooseLines();
+        purchFormLetter.createParmUpdateFromParmUpdateRecord(purchFormLetter.purchParmUpdate());
+
+        if(purchFormLetter.prompt())
+        {
+            purchFormLetter.run();
+        }
+    }
+
+    /// <summary>
+    /// Process purchase order packing slip using PuchParmTable.
+    /// </summary>
+    public static void UsingPurchParmTable()
+    {
+        PurchFormLetter_PackingSlip             purchFormLetter;
+        PurchFormLetter_PurchOrder              purchFormLetter_purchOrder;
+        PurchFormletterParmData                 purchFormLetterParmData;
+        PurchParmUpdate                         purchParmUpdate;
+        PurchParmTable                          purchParmTable;
+        PurchParmLine                           purchParmLine;
+        PurchTable                              purchTable;
+        PurchLine                               purchLine;
+        
+        Date                                    gToday = DateTimeUtil::getSystemDate(DateTimeUtil::getUserPreferredTimeZone());
+
+        purchFormLetterParmData = PurchFormletterParmData::newData(DocumentStatus::PackingSlip, VersioningUpdateType::Initial);
+        purchFormLetterParmData.parmOnlyCreateParmUpdate(true);
+        purchFormLetterParmData.createData(false);
+        purchParmUpdate = purchFormLetterParmData.parmParmUpdate();
+
+        purchFormLetter = PurchFormLetter::construct(DocumentStatus::PackingSlip);
+        purchFormLetter.transDate(gToday);
+        purchFormLetter.specQty(PurchUpdate::All);
+
+        purchFormLetter.parmParmTableNum(purchParmUpdate.ParmId);
+        purchFormLetter.parmId(purchParmUpdate.ParmId);
+        purchFormLetter.purchParmUpdate(purchFormLetterParmData.parmParmUpdate());
+        purchFormLetter.reArrangeNow(true);
+
+        while select PurchId from purchTable
+            where purchTable.PurchId == "PO002516" && purchTable.PurchId == "PO002517"
+        {
+            // If PurchTable's Document Status is not confirmed, process confimation
+            if(purchTable.DocumentStatus == DocumentStatus::None)
+            {
+                purchFormLetter_purchOrder = PurchFormLetter::construct(DocumentStatus::PurchaseOrder);
+                purchFormLetter_purchOrder.update(purchTable, purchFormLetter_purchOrder.parmParmTableNum());
+            }
+
+            // Insert PurchParmTable and PurchLineTable
+            purchParmTable.clear();
+            purchParmTable.TransDate                = gToday;
+            purchParmTable.Ordering                 = DocumentStatus::PackingSlip;
+            purchParmTable.ParmJobStatus            = ParmJobStatus::Waiting;
+            purchParmTable.Num                      = "Num";                    // Insert Num
+            purchParmTable.ParmId                   = purchParmUpdate.ParmId;
+            purchParmTable.PurchId                  = purchTable.PurchId;
+            purchParmTable.PurchName                = purchTable.PurchName;
+            purchParmTable.DeliveryName             = purchTable.DeliveryName;
+            purchParmTable.DeliveryPostalAddress    = purchTable.DeliveryPostalAddress;
+            purchParmTable.OrderAccount             = purchTable.OrderAccount;
+            purchParmTable.CurrencyCode             = purchTable.CurrencyCode;
+            purchParmTable.InvoiceAccount           = purchTable.InvoiceAccount;
+            purchParmTable.insert();
+
+            while select purchLine
+                where purchLine.PurchId == purchTable.PurchId
+            {
+                purchParmLine.clear();
+                purchParmLine.initFromPurchLine(purchLine);
+                purchParmLine.ReceiveNow    = drrcptWhile.Rqty;
+                purchParmLine.ParmId        = purchParmTable.ParmId;
+                purchParmLine.TableRefId    = purchParmTable.TableRefId;
+                purchParmLine.setQty(DocumentStatus::PackingSlip, false, true);
+                purchParmLine.setLineAmount();
+                purchParmLine.insert();
+            }       
+        }
+
+        purchFormLetter.run();
+    }
+}

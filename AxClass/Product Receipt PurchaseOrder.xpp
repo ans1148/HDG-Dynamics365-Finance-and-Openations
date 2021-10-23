@@ -1,0 +1,32 @@
+class ProductReceipt
+{
+    /// <summary>
+    /// Process purchase order packing slip 
+    /// </summary>
+    public static void processPackingSlip()
+    {
+        PurchFormLetter purchFormLetterConfirm, purchFormLetterPackingSlip;
+        PurchTable      purchTable;
+
+        purchTable = PurchTable::find('PO00001');
+
+        ttsbegin;
+
+        try
+        {
+            // First, make status to confirmation  
+            purchFormLetterConfirm = PurchFormLetter::construct(DocumentStatus::PurchaseOrder);
+            purchFormLetterConfirm.update(purchTable, purchFormLetterConfirm.parmParmTableNum());
+
+            // process product receipt
+            purchFormLetterPackingSlip = PurchFormLetter::construct(DocumentStatus::PackingSlip);
+            purchFormLetterPackingSlip.update(purchTable, 'num');
+        } 
+        catch(Exception::Error)
+        {
+            error("Product receipt is Canceled");
+        }
+        
+        ttscommit;
+    }
+}
