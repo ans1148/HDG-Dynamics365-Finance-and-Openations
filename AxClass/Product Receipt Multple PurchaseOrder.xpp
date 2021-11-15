@@ -45,7 +45,7 @@ class MultipleProductReceipt
         PurchLine                               purchLine;
         
         Date                                    gToday = DateTimeUtil::getSystemDate(DateTimeUtil::getUserPreferredTimeZone());
-
+        
         purchFormLetterParmData = PurchFormletterParmData::newData(DocumentStatus::PackingSlip, VersioningUpdateType::Initial);
         purchFormLetterParmData.parmOnlyCreateParmUpdate(true);
         purchFormLetterParmData.createData(false);
