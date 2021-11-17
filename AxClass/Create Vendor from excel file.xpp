@@ -1,0 +1,124 @@
+using System.IO;
+using OfficeOpenXml;
+using OfficeOpenXml.ExcelPackage;
+using OfficeOpenXml.ExcelRange;
+class HDG_VendCreateFromExcel extends RunBase
+{
+    Filename	uploadFileName;
+    Dialog		dialog;
+
+	public Object dialog()
+    {
+        DialogGroup			groupExcel;
+        FormBuildControl	formBuildControl;
+        FileUploadBuild		fileUploadBuild;
+
+        dialog = super();
+        dialog.caption("Import Vendor from Excel");
+        groupExcel	= dialog.addGroup("Excel");
+
+        formBuildControl	= dialog.formBuildDesign().control(groupExcel.name());
+        fileUploadBuild		= formBuildControl.addControlEx(classStr(FileUpload), 'Upload');
+        fileUploadBuild.fileNameLabel("Upload Excel");
+        fileUploadBuild.style(FileUploadStyle::MinimalWithFilename);
+        fileUploadBuild.fileTypesAccepted('.xlsx');
+
+        return dialog;
+    }
+
+	public void ImportData(container getData)
+    {
+        VendTable		vendTable;
+        DirPartyTable	dirPartyTable;
+        boolean			UpdateInsert;
+
+        vendTable = VendTable::find(conPeek(getData, 1), true);
+
+        UpdateInsert = vendTable ? false : true; // false is Update
+
+        if(!UpdateInsert)
+        {
+            vendTable.VendGroup = conPeek(getData, 3);
+            vendTable.initFromVendGroup(VendGroup::find(conPeek(getData, 3)));
+            vendTable.update();
+        }
+		else
+        {
+            vendTable.initValue();
+            vendTable.AccountNum		= conPeek(getData, 1);
+            vendTable.InvoiceAccount	= conPeek(getData, 1);
+            vendTable.VendGroup			= conPeek(getData, 3);
+            vendTable.initFromVendGroup(conPeek(getData, 3));
+            vendTable.insert();
+        }
+
+        dirPartyTable		= DirPartyTable::findRec(vendTable.Party, true);
+        dirPartyTable.Name	= conPeek(getData, 2);
+        dirPartyTable.update();
+    }
+
+    public void run()
+    {
+        FileUpload                          fileUploadControl;
+        FileUploadTemporaryStorageResult    fileUploadResult;
+
+        System.IO.Stream                    stream;
+        ExcelWorksheet                      worksheet;
+        OfficeOpenXml.ExcelRange            range;
+
+        int         i;
+        int         lastRow, lastColumn;
+        str			c1, c2, c3;
+        container	tmpData[];
+
+        fileUploadControl	= dialog.formRun().control(dialog.formRun().controlId('Upload'));
+        fileUploadResult	= fileUploadControl.getFileUploadResult();
+        uploadFileName		= fileUploadControl.fileName();
+
+		if(!uploadFileName)
+        {
+            throw error("There is no Excel File.");
+        }
+
+        super();
+
+		if(fileUploadResult != null && fileUploadResult.getUploadStatus())
+        {
+            ttsbegin;
+            stream = fileUploadResult.openResult();
+			using(ExcelPackage Package = new ExcelPackage(stream))
+            {
+                worksheet       = package.get_Workbook().get_Worksheets().get_Item(1);
+                range           = worksheet.Cells;
+                lastRow         = worksheet.Dimension.End.Row;
+                lastColumn      = worksheet.Dimension.End.Column;
+
+                for (i = 2; i<= lastRow; i++)
+                {
+                    c1 = range.get_item(i,1).value;//Account
+                    c2 = range.get_item(i,2).value;//Name
+                    c3 = range.get_item(i,3).value;//Group
+
+                    tmpData[i] = [c1, c2, c3];
+                }
+            }
+
+            for (i = 2; i<= lastRow; i++)
+            {
+                this.ImportData(tmpData[i]);
+            }
+            ttscommit;
+        }
+    }
+
+    public static void main(Args _args)
+    {
+        HDG_VendCreateFromExcel importExcel = new HDG_VendCreateFromExcel();
+
+        if(importExcel.prompt())
+        {
+            importExcel.run();
+        }
+    }
+
+}
