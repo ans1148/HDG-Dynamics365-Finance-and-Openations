@@ -1,0 +1,63 @@
+class CreateTransferJournal
+{
+    public static void main(Args args)
+    {
+        InterFaceTable          outTransferTable;
+        NumberSeq               num;
+        InventJournalTable      inventJournalTable;
+        InventJournalTrans      inventJournalTrans;
+        InventDim               fromInventDim, toInventDim;
+        InventLocation          fromInventLocation, toInventLocation;
+        JournalCheckPost        journalCheckPost;
+
+        ttsbegin;
+
+        while select forupdate outTransferTable
+        {
+            num = new NumberSeq();
+            num = NumberSeq::newGetNum(InventParameters::numRefTransferId());
+
+            inventJournalTable.clear();
+            inventJournalTable.initFromInventJournalName(InventJournalName::find(InventParameters::find().TransferJournalNameId));
+            inventJournalTable.Description      = strFmt("%1_%2", outTransferTable.ITEMID, outTransferTable.TRANSDATE);
+            inventJournalTable.SystemBlocked    = true;
+            inventJournalTable.insert();
+
+            if(inventJournalTable)
+            {
+                inventJournalTrans.clear();
+                inventJournalTrans.initFromInventJournalTable(inventJournalTable);
+                inventJournalTrans.initFromInventTable(InventTable::find(outTransferTable.ITEMID));
+
+                fromInventLocation              = InventLocation::find(outTransferTable.FROMINVENTLOCATIONID);
+                fromInventDim.InventLocationId  = fromInventLocation.InventLocationId;
+                fromInventDim.InventSiteId      = fromInventLocation.InventSiteId;
+                fromInventDim                   = InventDim::findOrCreate(fromInventDim);
+
+                toInventLocation                = InventLocation::find(outTransferTable.TOINVENTLOCATIONID);
+                toInventDim.InventLocationId    = toInventLocation.InventLocationId;
+                toInventDim.InventSiteId        = toInventLocation.InventSiteId;
+                toInventDim                     = InventDim::findOrCreate(toInventDim);
+
+                inventJournalTrans.InventDimId      = fromInventDim.inventDimId;
+                inventJournalTrans.ToInventDimId    = toInventDim.inventDimId;
+            
+                inventJournalTrans.Qty          = outTransferTable.Qty;
+                inventJournalTrans.TransDate    = outTransferTable.TRANSDATE;
+
+                inventJournalTrans.insert();
+            }
+
+            journalCheckPost = inventJournalCheckPost::newJournalCheckPost(JournalCheckPostType::Post ,inventJournalTable);
+            journalCheckPost.parmThrowCheckFailed(true);
+            journalCheckPost.parmShowInfoResult(true);
+            journalCheckPost.run();
+
+            inventJournalTable.selectForUpdate(true);
+            inventJournalTable.SystemBlocked = false;
+            inventJournalTable.update();
+        }
+        
+        ttscommit;
+    }
+}
