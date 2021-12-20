@@ -1,0 +1,32 @@
+class GetLog
+{
+    public static container getlog_loop(int _cnt = 0)
+    {
+        SysInfologEnumerator        enumerator;
+        SysInfologMessageStruct     msgStruct;
+        Exception                   exception;
+        container                   retCon;
+        int                         LogLine = infologLine() - _cnt;
+        str                         errMsg = '';
+
+        enumerator = SysInfologEnumerator::newData(infolog.infologData());
+        while (enumerator.moveNext())
+        {
+            msgStruct = new SysInfologMessageStruct(enumerator.currentMessage());
+            exception = enumerator.currentException();
+            switch (exception)
+            {
+                case exception::Info:
+                    break;
+
+                default:
+                    errMsg += msgStruct.message();
+                    break;
+            }
+        }
+        retCon = conIns(retCon,1,errMsg);
+        retCon = conIns(retCon,2,LogLine);
+
+        return retCon;
+    }
+}

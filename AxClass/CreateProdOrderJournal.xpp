@@ -1,0 +1,285 @@
+class CreateProdOrderJournal extends RunBaseBatch
+{
+    Notes                       returnError;
+    int                         LogCnt;
+    container                   errorCon;
+    str                         returnStatus;
+
+    public boolean runsImpersonated()
+    {
+        return true;
+    }
+
+    server static CreateProdOrderJournal construct()
+    {
+        return new CreateProdOrderJournal();
+    }
+
+    static ClassDescription description()
+    {
+        return "Create Production order and Journal";
+    }
+
+    public boolean canGoBatchJournal()
+    {
+        return  true;
+    }
+
+    //UnitId Round
+    UnitQty decRountUnit(ItemId _ItemId,Qty _Qty)
+    {
+        int             decimal;
+        Qty             retQty;
+        UnitOfMeasure   UnitOfMeasure;
+
+        UnitOfMeasure = UnitOfMeasure::findBySymbol(InventTableModule::find(_ItemId,ModuleInventPurchSales::Invent).UnitId);
+        
+        if(!UnitOfMeasure)
+        {
+            throw Error("UnitId does not exists");
+        }
+        
+        decimal     = UnitOfMeasure.DecimalPrecision;
+        retQty      = decRound(_Qty, decimal);
+
+        return retQty;
+    }
+
+    public void deleteProductionOrder(InterfaceTable _outsProd)
+    {
+        ProdId                          ProdId;
+        ProdTable                       prodTable;
+        ProdMultiStatusDecrease         prodMultiStatusDecrease;
+        ProdParmStatusDecrease          prodParmStatusDecrease;
+
+        select firstonly forupdate prodTable
+            where  prodTable.ProdId == _outsProd.ProdId;
+
+        ProdId = prodTable.ProdId;
+
+        // Make Journal reset
+        select forupdate prodParmStatusDecrease 
+            where prodParmStatusDecrease.ProdId == ProdTable.ProdId;
+
+        if(!prodParmStatusDecrease.RecId)
+        {
+            prodParmStatusDecrease.clear();
+            prodParmStatusDecrease.initFromProdTable(prodTable);
+            prodParmStatusDecrease.WantedStatus = ProdStatus::Scheduled;
+            prodParmStatusDecrease.ParmId       = NumberSeq::newGetNum(CompanyInfo::numRefParmId()).num();
+            prodParmStatusDecrease.insert();
+        }
+        else if(prodParmStatusDecrease.WantedStatus != ProdStatus::Created)
+        {
+            prodParmStatusDecrease.WantedStatus = ProdStatus::Created;
+            prodParmStatusDecrease.update();
+        }
+
+        prodMultiStatusDecrease = prodMultiStatusDecrease::construct();
+        prodMultiStatusDecrease.initParmBuffer(prodParmStatusDecrease);
+        prodMultiStatusDecrease.parmId(prodParmStatusDecrease.ParmId);
+        prodMultiStatusDecrease.run();
+
+        prodTable.delete();
+        info(strFmt("ProdTable(ProdId : %1) is deleted", ProdId));
+    }
+
+    //Create production order
+    public ProdId createProductionOrder(InterfaceTable _outsProd)
+    {
+        NumberSeq                               NumberSeq;
+        InventTable                             inventTable;
+        InventDim                               inventDim;
+        InventItemGroupItem                     InventItemGroupItem;
+        ProdTable                               prodTable;
+
+        //find or create inventdim
+        inventDim.clear();
+        inventDim.InventSiteId = _outsProd.INVENTSITEID;
+        inventDim.InventLocationId = _outsProd.INVENTLOCATIONID;
+
+        inventDim = inventDim::findOrCreate(inventDim);
+
+        // Initialize the base values using the previous initialized inventtable.
+        prodTable.initValue();
+
+        NumberSeq                   = NumberSeq::newGetNumFromId(ProdParameters::numRefProdId().NumberSequenceId);
+        prodTable.ProdId            = NumberSeq.num();
+        prodTable.initFromInventTable(inventTable);
+        prodTable.STUPDATE          = _outsProd.TRANSDATE;
+        prodTable.DLVDATE           = _outsProd.TRANSDATE;
+        prodTable.ITEMID            = _outsProd.ITEMID;
+        prodTable.NAME              = inventTable.itemName();
+        prodTable.QtySched          =  this.decRountUnit(_outsProd.ITEMID, _outsProd.TOTALQTY);
+        prodTable.QtyStUp           =  this.decRountUnit(_outsProd.ITEMID, _outsProd.TOTALQTY);
+        prodTable.inventDimId       = inventDim.inventDimId;
+
+        // Set the active BOM and Route, this in order to create the correspondind BOM lines and coproducts. Also to asign resources
+        prodTable.BOMId = BOMVersion::findActive(prodTable.ItemId,
+                                             prodTable.BOMDate,
+                                             prodTable.QtySched,
+                                             inventDim).BOMId;
+                
+        prodTable.RouteId = RouteVersion::findActive(prodTable.ItemId,
+                                                 prodTable.BOMDate,
+                                                 prodTable.QtySched,
+                                                 inventDim).RouteId;
+
+        //If there is no BOMId or RouteId, make error
+        if(!prodTable.BOMId)
+        {
+            throw error("There is no active BOM.");
+        }
+        if(!prodTable.RouteId)
+        {
+            throw error("There is no active Route Id.");
+        }
+                    
+        // Initialize the BOMVersion
+        prodTable.initBOMVersion();
+        // Initialize RouteVersion
+        prodTable.initRouteVersion();
+                
+        prodTable.RemainInventPhysical =  this.decRountUnit(_outsProd.ITEMID, _outsProd.TOTALQTY);
+
+        prodtable.insertFromForm(inventDim,NumberSeq);
+
+        //Make status 'start'
+        CreateProdOrderJournal::setProdStatusStarted(prodTable.prodId,_outsProd.TRANSDATE);
+
+        return prodTable.ProdId;
+    }
+
+    public void createProdJournal(InterdaceTable _outsProd, ProdId _prodId)
+    {
+        ProdMultiReportFinished prodMultiReportFinished;
+        ProdParmReportFinished  prodParmreportFinished, prodParmreportFinishedUPD;
+        ProdTable               prodTable;
+        Inventdim               inventDim;
+        Args                    args;
+
+        prodTable   = ProdTable::find(_prodId);
+        inventDim   = Inventdim::find(prodTable.InventDimId);
+        args        = new Args();
+        args.parmEnum(0);
+        args.record(ProdTable);
+        prodMultiReportFinished = ProdMultiReportFinished::construct(Args);
+        RunBaseMultiParm::initParm(prodMultiReportFinished);
+        prodParmreportFinished  = prodMultiReportFinished.defaultParmBuffer();
+        prodMultiReportFinished.insert(ProdTable,prodParmreportFinished);
+
+        prodParmreportFinishedUPD = prodParmreportFinished::find(prodParmreportFinished.ParmId, prodParmreportFinished.ProdId, true);
+
+        if (prodParmreportFinishedUPD)
+        {
+            prodParmreportFinishedUPD.EndRouteCard      = NoYes::No;
+            prodParmreportFinishedUPD.RouteAutoConsump  = RouteAutoConsump::RouteDependent;
+            prodParmreportFinishedUPD.BOMAutoConsump    = BomAutoConsump::FlushingPrincip;
+            prodParmreportFinishedUPD.EndPicklist       = NoYes::No;
+            prodParmreportFinishedUPD.InventDimId       = inventDim.inventDimId;
+            prodParmreportFinishedUPD.EndJob            = NoYes::No;
+            prodParmreportFinishedUPD.AcceptError       = Noyes::Yes;
+            prodParmreportFinishedUPD.TransDate         = _outsProd.TRANSDATE;
+
+            prodParmreportFinishedUPD.update();
+        }
+
+        prodMultiReportFinished.run();
+
+        info(strFmt("ProdId : %1 is successfully created and posted", _prodId));
+    }
+
+    static void setProdStatusStarted(ProdId _prodId,TransDate _PostDate)
+    {
+        ProdTable           prodTable;
+        ProdMultiStartUp    prodMultiStartup;
+        ProdParmStartUp     prodParm;
+        parmBuffer          parmBuffer;
+        ;
+        //find ProdTable, not nessary in your case
+        prodTable = ProdTable::find(_prodId);
+
+        //init ProdStartup
+        prodMultiStartup = ProdMultiStartUp::construct(new args());
+
+        //init default parameter
+        RunBaseMultiParm::initParm(prodMultiStartup);
+        
+        //parm ProdTable, you can do this muliple times in case you want to update
+        //more than one production at a time
+        prodMultiStartup.insert(prodTable, prodParm);
+
+        select forupdate prodParm
+                order by Linenum
+                where prodParm.ParmId == prodMultiStartup.parmId();
+        
+        prodParm.PostDate       = _PostDate;
+        prodParm.BOMAutoConsump =  BOMAutoConsump::Never;
+        ttsbegin;
+        prodParm.update();
+        ttscommit;
+        //Do update
+        prodMultiStartup.run();
+    }
+
+    public void run()
+    {
+        InterfaceTable                      outsProd;
+        ProdId                              gProdId;
+        
+        while select forupdate outsProd
+            where outsProd.STATUS != 'C'
+        {
+            try
+            {
+                ttsbegin;
+                //if interface record status is 'I', insert data
+                if(outsProd.ESB_TRANS == 'I')
+                {
+                    gProdId = this.createProductionOrder(outsProd);
+                    this.createProdJournal(outsProd, gProdId);
+                }
+                //if interface record status is 'I', delete data
+                else if(outsProd.ESB_TRANS == 'D')
+                {
+                    this.deleteProductionOrder(outsProd);
+                }
+                ttscommit;
+
+                //if process work successfully, insert stauts 'C'
+                returnSTATUS = 'C';
+                returnError  = '';
+            }
+            catch
+            {
+                //if process have error, insert stauts 'E' and error log
+                error(strFmt("Failed. IFID : %1",outsProd.IFID));
+                returnSTATUS = 'E';
+                errorCon        = GetLog::getlog_Loop(LogCnt); //This class is in my github code
+                returnError     = conPeek(errorCon,1);
+                LogCnt          += conPeek(errorCon,2);
+                ttsabort;
+            }
+            finally
+            {
+                ttsbegin;
+                outsProd.RECEIVE_DT = DateTimeUtil::applyTimeZoneOffset(DateTimeUtil::getSystemDateTime(),DateTimeUtil::getCompanyTimeZone());
+                outsProd.STATUS     = returnSTATUS;
+                outsProd.ERRORLOG   = returnError;
+                outsProd.update();
+                ttsCommit;
+            }
+        }
+    }
+
+    public static void main(Args args)
+    {
+        CreateProdOrderJournal createProdJournal = CreateProdOrderJournal::construct();
+
+        if(createProdJournal.prompt())
+        {
+            createProdJournal.run();
+        }
+    }
+
+}
