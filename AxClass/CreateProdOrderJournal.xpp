@@ -61,25 +61,31 @@ class CreateProdOrderJournal extends RunBaseBatch
         select forupdate prodParmStatusDecrease 
             where prodParmStatusDecrease.ProdId == ProdTable.ProdId;
 
-        if(!prodParmStatusDecrease.RecId)
-        {
-            prodParmStatusDecrease.clear();
-            prodParmStatusDecrease.initFromProdTable(prodTable);
-            prodParmStatusDecrease.WantedStatus = ProdStatus::Scheduled;
-            prodParmStatusDecrease.ParmId       = NumberSeq::newGetNum(CompanyInfo::numRefParmId()).num();
-            prodParmStatusDecrease.insert();
-        }
-        else if(prodParmStatusDecrease.WantedStatus != ProdStatus::Created)
-        {
-            prodParmStatusDecrease.WantedStatus = ProdStatus::Created;
-            prodParmStatusDecrease.update();
-        }
+        // started
+        prodParmStatusDecrease.clear();
+        prodParmStatusDecrease.initFromProdTable(prodTable);
+        prodParmStatusDecrease.WantedStatus = ProdStatus::StartedUp;
+        prodParmStatusDecrease.ParmId       = NumberSeq::newGetNum(CompanyInfo::numRefParmId()).num();
+        prodParmStatusDecrease.insert();
 
         prodMultiStatusDecrease = prodMultiStatusDecrease::construct();
         prodMultiStatusDecrease.initParmBuffer(prodParmStatusDecrease);
         prodMultiStatusDecrease.parmId(prodParmStatusDecrease.ParmId);
         prodMultiStatusDecrease.run();
 
+        // Created
+        prodParmStatusDecrease.clear();
+        prodParmStatusDecrease.initFromProdTable(prodTable);
+        prodParmStatusDecrease.WantedStatus = ProdStatus::Created;
+        prodParmStatusDecrease.ParmId       = NumberSeq::newGetNum(CompanyInfo::numRefParmId()).num();
+        prodParmStatusDecrease.insert();
+
+        prodMultiStatusDecrease = prodMultiStatusDecrease::construct();
+        prodMultiStatusDecrease.initParmBuffer(prodParmStatusDecrease);
+        prodMultiStatusDecrease.parmId(prodParmStatusDecrease.ParmId);
+        prodMultiStatusDecrease.run();
+
+        prodTable.reread();
         prodTable.delete();
         info(strFmt("ProdTable(ProdId : %1) is deleted", ProdId));
     }
@@ -172,14 +178,16 @@ class CreateProdOrderJournal extends RunBaseBatch
 
         if (prodParmreportFinishedUPD)
         {
-            prodParmreportFinishedUPD.EndRouteCard      = NoYes::No;
-            prodParmreportFinishedUPD.RouteAutoConsump  = RouteAutoConsump::RouteDependent;
-            prodParmreportFinishedUPD.BOMAutoConsump    = BomAutoConsump::FlushingPrincip;
-            prodParmreportFinishedUPD.EndPicklist       = NoYes::No;
+            prodParmreportFinishedUPD.EndRouteCard      = NoYes::Yes;
+            prodParmreportFinishedUPD.RouteAutoConsump  = RouteAutoConsump::Always;
+            prodParmreportFinishedUPD.BOMAutoConsump    = BomAutoConsump::Always;
+            prodParmreportFinishedUPD.EndPicklist       = NoYes::Yes;
             prodParmreportFinishedUPD.InventDimId       = inventDim.inventDimId;
-            prodParmreportFinishedUPD.EndJob            = NoYes::No;
+            prodParmreportFinishedUPD.EndJob            = NoYes::Yes;
             prodParmreportFinishedUPD.AcceptError       = Noyes::Yes;
             prodParmreportFinishedUPD.TransDate         = _outsProd.TRANSDATE;
+            prodParmreportFinishedUPD.QtyGood           = _outsProd.GOODQTY;
+            prodParmreportFinishedUPD.QtyError          = _outsProd.ERRORQTY;
 
             prodParmreportFinishedUPD.update();
         }
