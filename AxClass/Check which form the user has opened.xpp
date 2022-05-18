@@ -1,0 +1,17 @@
+[ExtensionOf(classStr(FormRun))]
+final class HDG_FormRun_Extension
+{
+    public void init()
+    {
+        HDG_UserActivityLog hdglog;
+
+        hdglog.UserId           = curUserId();
+        hdglog.Form             = this.name();
+        hdglog.LogInDateTime    = DateTimeUtil::getSystemDateTime();
+        hdglog.SessionId        = SessionId();
+        hdglog.insert();
+
+        next init();
+    }
+
+}
