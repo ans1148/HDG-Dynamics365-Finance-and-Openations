@@ -1,0 +1,61 @@
+public void updatePurchTotal()
+{
+    // Copy the query
+    Query query = new Query(PurchLine_ds.queryRun().query());
+
+    QueryBuildDataSource qbds = query.dataSourceTable(tableNum(PurchLine));
+    QueryRun        qr;
+    PurchLine       sumPurch;
+
+    // Sum LineAmount
+    qbds.addSelectionField(fieldNum(PurchLine, LineAmount), SelectionField::Sum);
+
+    qr = new QueryRun(query);
+    // Run the query
+    qr.next();
+
+    // Get the data
+    sumPurch = qr.get(tableNum(PurchLine));
+
+    // Set the new sum to the control
+    PurchTotalAmount.realValue(sumPurch.LineAmount);
+}
+[DataSource]
+class PurchLine
+{
+    /// <summary>
+    /// Execute Purchase Query
+    /// </summary>
+    public void executeQuery()
+    {
+        this.queryBuildDataSource().clearRanges();
+        this.query().dataSourceTable(tableNum(PurchTable)).clearRanges();
+        this.query().dataSourceName(InventItemGroupItemPurch_ds.name()).clearRanges();
+
+        this.query().dataSourceTable(tableNum(PurchTable)).addRange(fieldNum(PurchTable, OrderAccount)).value(dialogVendAccount.valueStr());
+        this.query().dataSourceTable(tableNum(PurchTable)).addRange(fieldNum(PurchTable, DeliveryDate)).value
+            (queryRange(dialogPurchaseFromDate.dateValue(),dialogPurchaseToDate.dateValue()));
+        if(dialogPurchInventLocation.valueStr())
+        {
+            this.query().dataSourceTable(tableNum(PurchTable)).addRange(fieldNum(PurchTable, InventLocationId)).value(dialogPurchInventLocation.valueStr());
+        }
+        if(dialogPurchItemGroup.valueStr())
+        {
+            this.query().dataSourceName(InventItemGroupItemPurch_ds.name()).addRange(fieldNum(InventItemGroupItem, ItemGroupId)).value(dialogPurchItemGroup.valueStr());
+        }
+
+        super();
+
+        element.updatePurchTotal();
+    }
+
+    /// <summary>
+    /// Set Query Order Field
+    /// </summary>
+    public void init()
+    {
+        super();
+
+        this.queryBuildDataSource().addOrderByField(fieldNum(PurchLine, PurchId));
+    }
+}
