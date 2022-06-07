@@ -1,0 +1,20 @@
+//In the case of a form, use formStr(<NameOfBaseForm>)
+//When extending a form Datasource use formDataSourceStr(<NameOfBaseForm>,<NameOfDataSource>)
+//When extending a form Data field, use formDataFieldStr(<NameOfBaseForm>,<NameOfDataSource>,<NameOfField>)
+//For a form control, use formControlStr(<NameOfBaseForm>,<NameOfControl>)
+
+[ExtensionOf(formControlStr(SalesTable, Complete))]
+final class rsmSalesTable_CompleteButton_Extension
+{
+    public void clicked()
+    {
+        FormButtonControl formButtonControl = any2Object(this) as FormButtonControl;
+        FormDataSource formDatasource = formButtonControl.formRun().dataSource(tableStr(SalesTable));
+        SalesTable salesTable = formDatasource.cursor();
+
+        next clicked();
+
+        info(strFmt("Sales order %1 was completed.", salesTable.SalesId));
+    }
+
+}
