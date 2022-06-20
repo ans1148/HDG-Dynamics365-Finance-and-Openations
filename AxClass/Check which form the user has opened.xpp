@@ -6,12 +6,36 @@ final class HDG_FormRun_Extension
         HDG_UserActivityLog hdglog;
 
         hdglog.UserId           = curUserId();
-        hdglog.Form             = this.name();
-        hdglog.LogInDateTime    = DateTimeUtil::getSystemDateTime();
-        hdglog.SessionId        = SessionId();
+        hdglog.FormName         = this.name();
+        hdglog.FormNameLabel    = this.design().caption();
+        hdglog.RecordDateTime   = DateTimeUtil::getSystemDateTime();
+        hdglog.AccessType       = HDG_SecurityUserAccessFormType::Open;
+        
+        xSession xSession = new xSession();
+        hdglog.Computername     = xSession.clientComputerName();
+        hdglog.SessionId        = xSession.sessionId();
+        
         hdglog.insert();
 
         next init();
     }
 
+    public void close()
+    {
+        HDG_UserActivityLog hdglog;
+
+        hdglog.UserId           = curUserId();
+        hdglog.FormName         = this.name();
+        hdglog.FormNameLabel    = this.design().caption();
+        hdglog.RecordDateTime   = DateTimeUtil::getSystemDateTime();
+        hdglog.AccessType       = HDG_SecurityUserAccessFormType::Closed;
+        
+        xSession xSession = new xSession();
+        hdglog.Computername     = xSession.clientComputerName();
+        hdglog.SessionId        = xSession.sessionId();
+        
+        hdglog.insert();
+
+        next init();
+    }
 }
