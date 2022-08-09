@@ -1,0 +1,52 @@
+public static void runSettleVendorPayment(LedgerJournalId _invJournalNum, LedgerJournalId _payJournalNum, VendAccount _vendAccount)
+{
+    VendTable vendTable;
+    VendTrans invVendTrans, payVendTrans;
+    LedgerJournalTrans ledgerJournalTrans;
+    CustVendTransData custVendTransData;
+
+    vendTable = VendTable::find(_vendAccount); 
+
+    try
+    {
+        ttsbegin;
+        
+        select invVendTrans
+            where invVendTrans.AccountNum == _vendAccount
+                && !invVendTrans.Closed
+            join ledgerJournalTrans
+                where ledgerJournalTrans.VendTransId == invVendTrans.RecId
+                && ledgerJournalTrans.AccountType == LedgerJournalACType::Vend
+                && ledgerJournalTrans.JournalNum == _invJournalNum;
+
+        select payVendTrans
+            where payVendTrans.AccountNum == gitReplaceTable.VendAccountNum
+                && !payVendTrans.Closed
+            join ledgerJournalTrans
+                where ledgerJournalTrans.VendTransId == payVendTrans.RecId
+                && ledgerJournalTrans.AccountType == LedgerJournalACType::Vend
+                && ledgerJournalTrans.JournalNum == _payJournalNum;
+
+        if(!invVendTrans || !payVendTrans)
+        {
+            throw Error('There is no available voucher.');
+        }
+
+        custVendTransData = CustVendTransData::construct(invVendTrans);
+        custVendTransData.markForSettlement(vendTable);
+
+        custVendTransData = CustVendTransData::construct(payVendTrans);
+        custVendTransData.markForSettlement(vendTable);
+
+        if(VendTrans::settleTransact(vendTable))
+        {
+            Info('Completed');
+        }
+
+        ttscommit;
+    }
+    catch(Exception::Error)
+    {
+        Error('Error');
+    }
+  }
