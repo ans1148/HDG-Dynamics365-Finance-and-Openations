@@ -1,0 +1,326 @@
+/// <summary>
+/// BOM create Template
+/// </summary>
+/// Created Date: 2022-10-31
+/// Created By: donggyun.ha
+class SYC_BOMTableCreate
+{
+    BOMId                   bomId;
+    InventSiteId            siteId;
+    InventLocationId        warehouseId;
+    Name                    bomName;
+    ItemId                  itemId;
+    SYC_BOMTableCreateTmp   bomDataTmp;
+
+    BOMTable                bomTable;
+    BOMVersion              bomVersion;
+    BOM                     bom;
+ 
+    InventDim               inventDim;
+    
+    BOMApprove              bomApprove;
+    BOMVersionApprove       bomVersionApprove;
+    BOMVersionActivate      bomVersionActivate;
+   
+    /// <summary>
+    /// Sample code that how to use class
+    /// </summary>
+    /// Created Date: 2022-10-31
+    /// Created By: donggyun.ha
+    public static void sampleCode()
+    {
+        SYC_BOMTableCreateTmp tmpTable;
+        Common importTableGroup, importTable; // import data set
+
+        while select importTableGroup
+            // group by importTable.BOMKey
+        {
+            while select importTable
+                //where importTable.BOMKey == importTableGroup.BOMKey
+            {
+                // insert to tmpTable
+                // tmpTable.initValue();
+                // tmpTable.BOMId = importTable.BOMId;
+                // tmpTable.SiteId = importTable.SiteId;
+                // ..
+                // tmpTable.insert();
+            }
+
+            SYC_BOMTableCreate createClass = SYC_BOMTableCreate::construct();
+            // set Parameter 
+            createClass.parmBomId(/*BOMID*/); 
+            createClass.parmInventSiteId(tmpTable.SiteId/*InventSiteId*/); // Mandatory
+            createClass.parmBOMName(tmpTable.Name/*BOM Name*/); // Mandatory
+            createClass.parmItemId(tmpTable.ItemId/*Item Id*/); // Mandatory
+            createClass.parmBOMData(tmpTable); // Mandatory
+
+            createClass.run();
+        }
+    }
+
+    /// <summary>
+    /// construct
+    /// </summary>
+    /// <returns>SYC_BOMTableCreate</returns>
+    /// Created Date: 2022-10-31
+    /// Created By: donggyun.ha
+    public static SYC_BOMTableCreate construct()
+    {
+        return new SYC_BOMTableCreate();
+    }
+
+    public void main(Args _args)
+    {
+        SYC_BOMTableCreate bomCreate = SYC_BOMTableCreate::construct();
+        bomCreate.run();
+    }
+
+    public BOMId parmBomId(BOMId _bomId = bomId)
+    {
+        bomId = _bomId;
+        return bomId;
+    }
+
+    public InventSiteId parmInventSiteId(InventSiteId _siteId = siteId)
+    {
+        siteId = _siteId;
+        return siteId;
+    }
+
+    public Name parmBOMName(Name _bomName = bomName)
+    {
+        bomName = _bomName;
+        return bomName;
+    }
+
+    public ItemId parmItemId(ItemId _itemId = itemId)
+    {
+        itemId = _itemId;
+        return itemId;
+    }
+
+    public SYC_BOMTableCreateTmp parmBOMData(SYC_BOMTableCreateTmp _bomDataTmp = bomDataTmp)
+    {
+        bomDataTmp = _bomDataTmp;
+        return bomDataTmp;
+    }
+
+    /// <summary>
+    /// BOM Id New number
+    /// </summary>
+    /// <returns>bomid</returns>
+    /// Created Date: 2022-10-31
+    /// Created By: donggyun.ha
+    private BOMId newBOMId()
+    {
+        NumberSeq       numberSeq;
+ 
+        numberSeq = BOMTable::numberSeq();
+        numberSeq.used();
+ 
+        return numberSeq.num();
+    }
+
+    /// <summary>
+    /// validate check
+    /// </summary>
+    /// Created Date: 2022-10-31
+    /// Created By: donggyun.ha
+    public void validateParameter()
+    {
+        if(!siteId || !InventSite::find(siteId))
+        {
+            throw error('Site information is not valid');
+        }
+
+        if(!bomName)
+        {
+            throw error('Please insert BOM name');
+        }
+
+        if(!itemId || !InventTable::find(itemId))
+        {
+            throw error('Item code is not valid');
+        }
+
+        if(!bomDataTmp)
+        {
+            throw error('BOM data is not valid');
+        }
+    }
+
+    /// <summary>
+    /// run
+    /// </summary>
+    /// Created Date: 2022-10-31
+    /// Created By: donggyun.ha
+    public void run()
+    {
+        this.validateParameter();
+
+        ttsBegin;
+ 
+        try
+        {
+            if (this.createBOMTable())
+            {
+                if(this.createBOMVersion())
+                {
+                    this.crateBOM();
+                }
+            }
+   
+            this.approveBOM();
+        }
+        catch(Exception::Error)
+        {
+            Error('Error is occurred while creating BOM data');
+        }
+
+        ttsCommit;
+    }
+
+    /// <summary>
+    /// BOM Table creation
+    /// </summary>
+    /// <returns>validate insert</returns>
+    /// Created Date: 2022-10-31
+    /// Created By: donggyun.ha
+    public boolean createBOMTable()
+    {
+        boolean ret;
+
+        if(!this.parmBomId())
+        {
+            bomId = this.newBOMId();
+        }
+ 
+        bomTable.clear();
+        bomTable.initValue();
+   
+        bomTable.bomId          = bomId;
+        bomTable.SiteId         = siteId;
+        bomTable.Name           = bomName;
+        bomTable.ItemGroupId    = InventTable::find(itemId).itemGroupId();
+        
+        ret = bomTable.validateWrite();
+
+        if(ret)
+        {
+            bomTable.insert();
+        }
+
+        return ret;
+    }
+
+    /// <summary>
+    /// BOM version creation
+    /// </summary>
+    /// <returns>validate insert</returns>
+    /// Created Date: 2022-10-31
+    /// Created By: donggyun.ha
+    public boolean createBOMVersion()
+    {
+        boolean ret;
+
+        bomVersion.clear();
+        bomVersion.initValue();
+   
+        bomVersion.ItemId       = itemId;
+        bomVersion.initFromBOMTable(bomTable);
+
+        ret = bomVersion.validateWrite();
+
+        if(ret)
+        {
+            bomVersion.insert(false);// do not check for circularity
+        }
+
+        return ret;
+    }
+
+    /// <summary>
+    /// BOM creation
+    /// </summary>
+    /// Created Date: 2022-10-31
+    /// Created By: donggyun.ha
+    public void crateBOM()
+    {
+        while select bomDataTmp
+        {
+            bom.clear();
+            bom.initValue();
+   
+            bom.bomId               = bomId;
+            bom.LineNum             = BOM::lastLineNum(bomId) + 1;
+ 
+            bom.EndSchedConsump     = bomDataTmp.EndSchedConsump;
+            bom.ProdFlushingPrincip = bomDataTmp.ProdFlushingPrincip;
+            bom.WrkCtrConsumption   = bomDataTmp.WrkCtrConsumption;
+            bom.bomConsump          = bomDataTmp.BOMConsump;
+            bom.initFromInventTable(InventTable::find(bomDataTmp.ItemBOMId));
+            bom.bomType             = bomDataTmp.BOMType;
+            bom.bomQty              = bomDataTmp.BOMQty;
+            bom.Calculation         = bomDataTmp.Calculation;
+            bom.Height              = bomDataTmp.Height;
+            bom.Width               = bomDataTmp.Width;
+            bom.Depth               = bomDataTmp.Depth;
+            bom.Density             = bomDataTmp.Density;
+            bom.Constant            = bomDataTmp.Constant;
+            bom.RoundUp             = bomDataTmp.RoundUp;
+            bom.RoundUpQty          = bomDataTmp.RoundUpQty;
+            bom.Position            = bomDataTmp.Position;
+            bom.OprNum              = bomDataTmp.OprNum;
+            bom.FromDate            = bomDataTmp.FromDate;
+            bom.ToDate              = bomDataTmp.ToDate;
+            bom.VendId              = bomDataTmp.VendId;
+            bom.UnitId              = bomDataTmp.UnitId;
+            bom.ConfigGroupId       = bomDataTmp.ConfigGroupId;
+            bom.Formula             = bomDataTmp.Formula;
+            bom.bomQtySerie         = bomDataTmp.BOMQtySerie;
+            bom.ItemBOMId           = bomDataTmp.ItemBOMId;
+            bom.ItemRouteId         = bomDataTmp.ItemRouteId;
+            bom.ScrapVar            = bomDataTmp.ScrapVar;
+            bom.ScrapConst          = bomDataTmp.ScrapConst;
+ 
+            inventDim.clear();
+            inventDim.InventSiteId     = bomDataTmp.SiteId;
+            inventDim.InventLocationId = bomDataTmp.InventLocationId;
+ 
+            bom.InventDimId         = InventDim::findOrCreate(inventDim).inventDimId;
+ 
+            if (bom.validateWrite())
+            {
+                bom.insert();
+            }
+        }
+    }
+
+    /// <summary>
+    /// approve bom
+    /// </summary>
+    /// Created Date: 2022-10-31
+    /// Created By: donggyun.ha
+    public void approveBOM()
+    {
+        if (bomTable)
+        {
+            bomApprove = bomApprove::newBOMTable(bomTable);
+            bomApprove.parmApprover(HcmWorker::userId2Worker(curUserId()));
+            bomApprove.run();
+        }
+   
+        if (bomVersion)
+        {
+            bomVersionApprove = BOMRouteVersionApprove::newBOMVersion(bomVersion);
+            bomVersionApprove.parmApproveBOM(true);
+            bomVersionApprove.parmRemove(false);
+            bomVersionApprove.parmApprover(HcmWorker::userId2Worker(curUserId()));
+            bomVersionApprove.run();
+ 
+            bomVersionActivate = BOMRouteVersionActivate::newBOMVersion(bomVersion);
+            bomVersionActivate.run();
+        }
+    }
+
+}
