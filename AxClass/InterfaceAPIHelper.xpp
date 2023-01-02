@@ -1,0 +1,142 @@
+/// <summary>
+/// API Interface Helper
+/// </summary>
+/// Created Date: 2022-10-26
+/// Created By: donggyun.ha
+class SYC_InterfaceAPIHelper
+{
+    str url;
+    str header;
+    str contentType;
+    str postData;
+    SYC_InterfaceAPIResponseStatus responseStatus;
+    SYC_InterfaceAPIType apiType;
+
+    /// <summary>
+    /// Declare class
+    /// </summary>
+    /// <returns>SYC_InterfaceAPIHelper</returns>
+    public static SYC_InterfaceAPIHelper construct()
+    {
+        return new SYC_InterfaceAPIHelper();
+    }
+
+    public str parmContentType(str _contentType = contentType)
+    {
+        contentType = _contentType;
+        return contentType;
+    }
+
+    public str parmHeader(str _header = header)
+    {
+        header = _header;
+        return header;
+    }
+
+    public str parmUrl(str _url = url)
+    {
+        url = _url;
+        return url;
+    }
+
+    public str parmPostData(str _postData = postData)
+    {
+        postData = _postData;
+        return postData;
+    }
+
+    public SYC_InterfaceAPIResponseStatus parmResponseStatus(SYC_InterfaceAPIResponseStatus _responseStatus = responseStatus)
+    {
+        responseStatus = _responseStatus;
+        return responseStatus;
+    }
+
+    public void validateUrlExists()
+    {
+        if(!this.parmUrl())
+        {
+            throw Error("There is no URL");
+        }
+    }
+
+    /// <summary>
+    /// get api call
+    /// </summary>
+    /// <returns>json</returns>
+    /// Created Date: 2022-10-26
+    /// Created By: donggyun.ha
+    public str callGetApi()
+    {
+        RetailWebRequest    webRequest;
+        RetailWebResponse   webResponse;
+        RetailCommonWebAPI  webApi;
+        str                 rawResponse;
+
+        this.validateUrlExists();
+
+        webApi = RetailCommonWebAPI::construct();
+
+        webRequest = RetailWebRequest::newUrl(url);
+        webRequest.parmContentType(contentType);
+        webRequest.parmHeader(header);
+        webRequest.parmMethod('GET');
+
+        webResponse = webApi.getResponse(webRequest);
+
+        this.parmResponseStatus(int2Str(webResponse.parmHttpStatus()));
+        if(webResponse.parmHttpStatus() != 200)
+        {
+            throw error(strFmt("API Reponse have error(Error code : %1)", webResponse.parmHttpStatus()));
+        }
+        
+        rawResponse = webResponse.parmData();
+
+        return rawResponse;
+    }
+
+    /// <summary>
+    /// post method call
+    /// </summary>
+    /// <returns>json</returns>
+    /// Created Date: 2022-10-26
+    /// Created By: donggyun.ha
+    public str callPostApi()
+    {
+        RetailWebResponse   webResponse;
+        RetailCommonWebAPI  webApi;
+        str                 rawResponse;
+
+        this.validateUrlExists();
+
+        if(!contentType)
+        {
+            contentType = 'application/json';
+        }
+
+        webApi = RetailCommonWebAPI::construct();
+        webResponse = webApi.makePostRequest(url, postData, header, contentType);
+
+        this.parmResponseStatus(int2Str(webResponse.parmHttpStatus()));
+        if(webResponse.parmHttpStatus() != 200)
+        {
+            throw error(strFmt("API Reponse have error(Error code : %1)", webResponse.parmHttpStatus()));
+        }
+        
+        rawResponse = webResponse.parmData();
+        
+        return rawResponse;
+    }
+
+    /// <summary>
+    /// json to map
+    /// </summary>
+    /// <param name = "_json">json string</param>
+    /// <returns>map</returns>
+    /// Created Date: 2022-10-26
+    /// Created By: donggyun.ha
+    public static Map ConvertJsonToMap(str _json)
+    {
+        return RetailCommonWebAPI::getMapFromJsonString(_json);
+    }
+
+}
