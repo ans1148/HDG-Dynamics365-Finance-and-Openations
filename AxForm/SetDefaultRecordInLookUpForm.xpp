@@ -1,0 +1,30 @@
+//Reference from CustTableLookup
+public void run()
+{
+    FormControl callingControl = SysTableLookup::getCallerControl(element.args());
+    if (callingControl is FormStringControl)
+    {
+        var formStringControl = callingControl as FormStringControl;
+        var isFiltered = SysTableLookup::filterLookupPreRun(formStringControl, custTable_AccountNum, custTable_ds);
+
+        super();
+
+        SysTableLookup::filterLookupPostRunEx(isFiltered, formStringControl.text(), custTable_AccountNum, custTable_ds);
+    }
+    else if (callingControl is SegmentedEntryControl)
+    {
+        var segmentedEntryControl = callingControl as SegmentedEntryControl;
+        var isFiltered = SegmentedEntryTableLookup::filterSegmentedLookupPreRun(segmentedEntryControl,
+                custTable_AccountNum, custTable_ds);
+
+        super();
+
+        SysTableLookup::filterLookupPostRunEx(isFiltered, segmentedEntryControl.currentSegmentText(),
+                custTable_AccountNum, custTable_ds,
+                CustomerDataInteractorFactory::useExistingOrCreateResolver(segmentedEntryControl), dirPartyTable_Name, true);
+    }
+    else
+    {
+        throw error(Error::wrongUseOfFunction(funcname()));
+    }
+}
