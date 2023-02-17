@@ -1,0 +1,74 @@
+// When User want to see Ledger account name in field, we can make display method with below code
+[ExtensionOf(tableStr(GeneralJournalAccountEntry))]
+final class HDGTable_GeneralJournalAccountEntry_FI_Extension
+{
+    public display str HDG_getAccountDimensionDescription()
+    {
+        DimensionAttributeValueCombination dimensionAttributeValueCombination;
+        DimensionHierarchy dimensionHierarchy;
+        ;
+        DimensionNameValueListContract contract;
+        DimensionAttributeValueContract values;
+        List dimensionList = new List(Types::Class);
+        ListEnumerator dimensionValues;
+        ;
+        DimAttributeOMBusinessUnit buView;
+        DimAttributeOMCostCenter costView;
+        DimAttributeOMDepartment depView;
+
+        str returnValue;
+
+        select firstonly dimensionAttributeValueCombination
+            where dimensionAttributeValueCombination.RecId == this.LedgerDimension
+            join dimensionHierarchy
+            where dimensionHierarchy.RecId == dimensionAttributeValueCombination.AccountStructure;
+
+        contract = LedgerDimensionFacade::getDimensionNameValueListFromLedgerDimensionForHierarchy(dimensionAttributeValueCombination, dimensionHierarchy.RecId);
+        dimensionList = contract.parmValues();
+
+        dimensionValues = dimensionList.getEnumerator();
+        while(dimensionValues.moveNext())
+        {
+            values = dimensionValues.current();
+
+            switch(values.parmName())
+            {
+                case 'MainAccount' :
+                    returnValue += MainAccount::findByMainAccountId(values.parmValue()).Name;
+                    break;
+
+                case 'BusinessUnit' :
+                    select firstonly buView
+                        where buView.Value == values.parmValue();
+                    returnValue += buView.Name;
+                    break;
+
+                case 'CostCenter' :
+                    select firstonly costView
+                        where costView.Value == values.parmValue();
+                    returnValue += costView.Name;
+                    break;
+
+                case 'Department' :
+                    select firstonly depView
+                        where depView.Value == values.parmValue();
+                    returnValue += depView.Name;
+                    break;
+
+                case 'Customer' :
+                    returnValue += CustTable::find(values.parmValue()).name();
+                    break;
+
+                case 'Vendor' : 
+                    returnValue += VendTable::find(values.parmValue()).name();
+                    break;
+
+            }
+
+            returnValue += '-';
+        }
+        
+        return subStr(returnValue, 1, strLen(returnValue) - 1);
+    }
+
+}
