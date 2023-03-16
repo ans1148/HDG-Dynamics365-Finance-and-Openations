@@ -1,0 +1,110 @@
+public class EntAssetCheckListReportController extends SrsReportRunController
+{
+    QueryBuildRange  qbrWorkOrderId;
+    QueryBuildRange  qbrExpectedStart;
+    QueryBuildRange  qbrWorker;
+
+    /// <summary>
+    /// Adds work order to query range.
+    /// </summary>
+    /// <param name = "_workOrderTable">The work order to be added.</param>
+    protected void addWorkOrderTableRange(EntAssetWorkOrderTable _workOrderTable)
+    {
+        QueryBuildDataSource qbdsWorkOrderTable;
+    
+        qbdsWorkOrderTable = this.getFirstQuery().dataSourceTable(tableNum(EntAssetWorkOrderTable));
+
+        if (!qbrWorkOrderId)
+        {
+            if (qbdsWorkOrderTable)
+            {
+                qbrWorkOrderId = SysQuery::findOrCreateRange(qbdsWorkOrderTable, fieldNum(EntAssetWorkOrderTable, WorkOrderId));
+            }
+        }
+    
+        if (qbrWorkOrderId)
+        {
+            if (strLen(qbrWorkOrderId.value()) + strLen(_workOrderTable.WorkOrderId) + 1 > 255)
+            {
+                if (qbdsWorkOrderTable)
+                {
+                    qbrWorkOrderId = qbdsWorkOrderTable.addRange(fieldNum(EntAssetWorkOrderTable, WorkOrderId));
+                }
+            }
+    
+            qbrWorkOrderId.value(queryRangeConcat(qbrWorkOrderId.value(), _workOrderTable.WorkOrderId));
+        }
+    }
+
+    /// <summary>
+    /// Clears the saved query ranges.
+    /// </summary>
+    protected void clearRanges()
+    {
+        QueryBuildDataSource qbdsWorkOrderTable = this.getFirstQuery().dataSourceTable(tableNum(EntAssetWorkOrderTable));
+    
+        if (qbdsWorkOrderTable)
+        {
+            qbdsWorkOrderTable.clearRanges();
+        }
+    }
+
+    /// <summary>
+    /// Adds default fields to query range.(Expected started, worker)
+    /// </summary>
+    protected void addDefaultRanges()
+    {
+        QueryBuildDataSource qbdsWorkOrderTable = this.getFirstQuery().dataSourceTable(tableNum(EntAssetWorkOrderTable));
+
+        if (!qbrExpectedStart)
+        {
+            if (qbdsWorkOrderTable)
+            {
+                qbrExpectedStart = SysQuery::findOrCreateRange(qbdsWorkOrderTable, fieldNum(EntAssetWorkOrderTable, ExpectedStart));
+            }
+        }
+
+        if (!qbrWorker)
+        {
+            if (qbdsWorkOrderTable)
+            {
+                qbrWorker = SysQuery::findOrCreateRange(qbdsWorkOrderTable, fieldNum(EntAssetWorkOrderTable, WorkerScheduled));
+            }
+        }
+    }
+
+    protected void prePromptModifyContract()
+    {
+        MultiSelectionHelper    helper;
+        EntAssetWorkOrderTable  workOrderTable;
+    
+        super();
+        
+        // if there is opend by work order form, add work order to default query ranges.
+        if (args.caller())
+        {
+            this.clearRanges();
+
+            helper = MultiSelectionHelper::createFromCaller(args.caller());
+    
+            for (workOrderTable = helper.getFirst() as EntAssetWorkOrderTable; workOrderTable; workOrderTable = helper.getNext() as EntAssetWorkOrderTable)
+            {
+                this.addWorkOrderTableRange(workOrderTable);
+            }
+
+            this.addDefaultRanges();
+        }
+    }
+
+    public static void main(Args _args)
+    {
+        EntAssetCheckListReportController controller = new EntAssetCheckListReportController();
+        ;
+
+        controller.parmReportName(ssrsReportStr(MGPK_EntAssetCheckListReport, Report));
+        controller.parmArgs(_args);
+       
+        controller.startOperation();
+    }
+
+}
