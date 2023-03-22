@@ -1,0 +1,18 @@
+        // When use ecoResProductImage.MediumSize the image is broken, so use below code
+        DocuRef             docuRef;
+        EcoResProductImage  ecoResProductImage;
+        
+        select firstonly docuRef
+              where docuRef.RefRecId == InventTable::find(_ItemId).Product
+              join ecoResProductImage
+                  where ecoResProductImage.RefRecId == docuRef.RecId
+                     && ecoResProductImage.DefaultImage == NoYes::Yes;
+                       
+        try
+        {
+            gTmp.ProductImage = DocumentManagement::getAttachmentAsContainer(docuRef);
+        }
+        catch(Exception::CLRError)
+        {
+            gTmp.ProductImage = ecoResProductImage.MediumSize;
+        }
