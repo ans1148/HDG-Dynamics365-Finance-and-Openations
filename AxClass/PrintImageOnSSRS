@@ -1,4 +1,6 @@
-        // When use ecoResProductImage.MediumSize the image is broken, so use below code
+        // In Dynamics365 Finance and Operations, when you want to print product image on SSRS report. 
+        // If you use MediumSize value of EcoResProductImage table, the image will broken or poor quality. 
+        // So we must use original file located Azure or etc.
         DocuRef             docuRef;
         EcoResProductImage  ecoResProductImage;
         
