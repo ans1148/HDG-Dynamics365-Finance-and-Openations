@@ -1,0 +1,18 @@
+InventDim inventDim, inventDimOnHand;
+InventDimParm inventDimParm;
+InventQtyAvailPhysical result;
+
+inventDim.clear();
+
+// If you don't know inventdim id use below code
+inventDim.InventSiteId = _inventSiteId;  // Site
+inventDim.InventLocationId = _inventLocation; // Location
+inventDim.wMSLocationId = _wMSLocationId; // Warehouse
+inventDimOnHand = InventDim::findOrCreate(inventDim);
+
+// If you know inventdim id use below code
+//inventDimOnHand = InventDim::findOrCreate(_inventDimId);
+
+inventDimParm.initFromInventDim(InventDim::find(inventDimOnHand.inventDimId));
+
+result = InventSum::findSum(_itemId, inventDimOnHand, inventDimParm).availPhysicalCalculated();
