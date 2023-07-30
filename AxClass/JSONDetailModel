@@ -1,0 +1,23 @@
+[DataContractAttribute]
+class HDG_IF_InventTableDetailItemRequestModel
+{
+    str ITEMID;
+    str ITEMNAME;
+
+    [DataMemberAttribute("ITEMID")]
+    public str ITEMID(str _ITEMID = ITEMID)
+    {
+        ITEMID = _ITEMID;
+
+        return ITEMID;
+    }
+
+    [DataMemberAttribute("ITEMNAME")]
+    public str ITEMNAME(str _ITEMNAME = ITEMNAME)
+    {
+        ITEMNAME = _ITEMNAME;
+
+        return ITEMNAME;
+    }
+
+}
