@@ -1,0 +1,199 @@
+class HDG_IF_InventTablePostToMES
+{
+    public static void main(Args _args)
+    {
+        HDG_IF_InventTablePostToMES::jsonSerializeHeaderDetailObject();
+        HDG_IF_InventTablePostToMES::jsonSerializeHeaderDetailArray();
+        HDG_IF_InventTablePostToMES::jsonDeserializeHeaderDetailObject();
+        HDG_IF_InventTablePostToMES::jsonDeserializeHeaderDetailArray();
+    }
+
+    /**************
+    {
+        "DETAILSUBITEM": [
+            {
+                "ITEMID": "subA0001",
+                "ITEMNAME": "Sub Assy 0001"
+            }
+            ,
+            {
+                "ITEMID": "subA0002",
+                "ITEMNAME": "Sub Assy 0002"
+            }
+        ],
+        "ITEMID": "A0001",
+        "ITEMNAME": "Assy 0001"
+    }
+    **************/
+    public static str jsonSerializeHeaderDetailObject()
+    {
+        HDG_IF_InventTableRequestModel inventTableModel;
+        HDG_IF_InventTableDetailItemRequestModel subItemModel;
+        List detailList = new List(Types::Class);
+        str requestJson;
+
+        inventTableModel = new HDG_IF_InventTableRequestModel();
+
+        inventTableModel.ITEMID('A0001');
+        inventTableModel.ITEMNAME('Assy 0001');
+
+        subItemModel = new HDG_IF_InventTableDetailItemRequestModel();
+        subItemModel.ITEMID('subA0001');
+        subItemModel.ITEMNAME('Sub Assy 0001');
+        detailList.addEnd(subItemModel);
+
+        subItemModel = new HDG_IF_InventTableDetailItemRequestModel();
+        subItemModel.ITEMID('subA0002');
+        subItemModel.ITEMNAME('Sub Assy 0002');
+        detailList.addEnd(subItemModel);
+
+        inventTableModel.DETAILSUBITEM(detailList);
+
+        requestJson = FormJsonSerializer::serializeClass(inventTableModel);
+
+        return requestJson;
+    }
+
+    /******
+    [
+        {
+            "DETAILSUBITEM": [
+                {
+                    "ITEMID": "subA0001",
+                    "ITEMNAME": "Sub Assy 0001"
+                },
+                {
+                    "ITEMID": "subA0002",
+                    "ITEMNAME": "Sub Assy 0002"
+                }
+            ],
+            "ITEMID": "A0001",
+            "ITEMNAME": "Assy 0001"
+        },
+        {
+            "DETAILSUBITEM": [
+                {
+                    "ITEMID": "subS0001",
+                    "ITEMNAME": "Sub Set 0001"
+                },
+                {
+                    "ITEMID": "subS0002",
+                    "ITEMNAME": "Sub Set 0002"
+                }
+            ],
+            "ITEMID": "S0001",
+            "ITEMNAME": "Set 0001"
+        }
+    ]
+    ***/
+    public static str jsonSerializeHeaderDetailArray()
+    {
+        HDG_IF_InventTableRequestModel inventTableModel;
+        HDG_IF_InventTableDetailItemRequestModel subItemModel;
+        List headerList = new List(Types::Class);
+        List detailList = new List(Types::Class);
+        str requestJson;
+        
+        // A0001
+        inventTableModel = new HDG_IF_InventTableRequestModel();
+
+        inventTableModel.ITEMID('A0001');
+        inventTableModel.ITEMNAME('Assy 0001');
+
+        subItemModel = new HDG_IF_InventTableDetailItemRequestModel();
+        subItemModel.ITEMID('subA0001');
+        subItemModel.ITEMNAME('Sub Assy 0001');
+        detailList.addEnd(subItemModel);
+
+        subItemModel = new HDG_IF_InventTableDetailItemRequestModel();
+        subItemModel.ITEMID('subA0002');
+        subItemModel.ITEMNAME('Sub Assy 0002');
+        detailList.addEnd(subItemModel);
+
+        inventTableModel.DETAILSUBITEM(detailList);
+
+        headerList.addEnd(inventTableModel);
+
+        // A0002
+        inventTableModel = new HDG_IF_InventTableRequestModel();
+
+        inventTableModel.ITEMID('S0001');
+        inventTableModel.ITEMNAME('Set 0001');
+
+        detailList = new List(Types::Class);
+
+        subItemModel = new HDG_IF_InventTableDetailItemRequestModel();
+        subItemModel.ITEMID('subS0001');
+        subItemModel.ITEMNAME('Sub Set 0001');
+        detailList.addEnd(subItemModel);
+
+        subItemModel = new HDG_IF_InventTableDetailItemRequestModel();
+        subItemModel.ITEMID('subS0002');
+        subItemModel.ITEMNAME('Sub Set 0002');
+        detailList.addEnd(subItemModel);
+
+        inventTableModel.DETAILSUBITEM(detailList);
+
+        headerList.addEnd(inventTableModel);
+
+        requestJson = FormJsonSerializer::serializeClass(headerList);
+
+        return requestJson;
+    }
+
+    public static void jsonDeserializeHeaderDetailObject()
+    {
+        str json = HDG_IF_InventTablePostToMES::jsonSerializeHeaderDetailArray();
+        HDG_IF_InventTableRequestModel inventTableModel;
+        HDG_IF_InventTableDetailItemRequestModel subItemModel;
+
+        List subItemValues = new List(Types::Class);
+        ListEnumerator subItemValue;
+
+        inventTableModel = FormJsonSerializer::deserializeObject(classNum(HDG_IF_InventTableRequestModel), json);
+
+        subItemValues = FormJsonSerializer::deserializeCollection(classNum(List), json, Types::Class, ClassStr(HDG_IF_InventTableDetailItemRequestModel));
+        subItemValue = subItemValues.getEnumerator();
+
+        if(subItemValues.elements() > 0)
+        {
+            while(subItemValue.moveNext())
+            {
+                subItemModel = subItemValue.current();
+            }
+        }
+    }
+
+    public static void jsonDeserializeHeaderDetailArray()
+    {
+        str json = HDG_IF_InventTablePostToMES::jsonSerializeHeaderDetailArray();
+        HDG_IF_InventTableRequestModel inventTableModel;
+        HDG_IF_InventTableDetailItemRequestModel subItemModel;
+
+        List inventTableValues = new List(Types::Class);
+        ListEnumerator inventTableValue;
+
+        List subItemValues = new List(Types::Class);
+        ListEnumerator subItemValue;
+
+        inventTableValues = FormJsonSerializer::deserializeCollection(classNum(List), json, Types::Class, ClassStr(HDG_IF_InventTableRequestModel));
+        inventTableValue = inventTableValues.getEnumerator();
+
+        if(inventTableValues.elements() > 0)
+        {
+            while(inventTableValue.moveNext())
+            {
+                inventTableModel = inventTableValue.current();
+
+                subItemValues = inventTableModel.DETAILSUBITEM();
+                subItemValue = subItemValues.getEnumerator();
+
+                while(subItemValue.moveNext())
+                {
+                    subItemModel = subItemValue.current();
+                }
+            }
+        }
+    }
+
+}
