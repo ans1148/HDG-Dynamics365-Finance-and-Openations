@@ -1,0 +1,33 @@
+[DataContractAttribute]
+class HDG_IF_InventTableRequestModel
+{
+    str ITEMID;
+    str ITEMNAME;
+    List DETAILSUBITEM;
+
+    [DataMemberAttribute("ITEMID")]
+    public str ITEMID(str _ITEMID = ITEMID)
+    {
+        ITEMID = _ITEMID;
+
+        return ITEMID;
+    }
+
+    [DataMemberAttribute("ITEMNAME")]
+    public str ITEMNAME(str _ITEMNAME = ITEMNAME)
+    {
+        ITEMNAME = _ITEMNAME;
+
+        return ITEMNAME;
+    }
+
+    [DataMemberAttribute("DETAILSUBITEM"),
+        DataCollectionAttribute(Types::Class, classStr(HDG_IF_InventTableDetailItemRequestModel))]
+    public List DETAILSUBITEM(List _DETAILSUBITEM = DETAILSUBITEM)
+    {
+        DETAILSUBITEM = _DETAILSUBITEM;
+
+        return DETAILSUBITEM;
+    }
+
+}
