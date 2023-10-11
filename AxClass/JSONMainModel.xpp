@@ -21,8 +21,14 @@ class HDG_IF_InventTableRequestModel
         return ITEMNAME;
     }
 
+    //[DataMemberAttribute(“rsmTutOrderLineClass”), – This lets the system know that when the data is sent in, it will use a JSON or XML tag named ‘rsmTutOrderLineClass’. This can be set to whatever your data tag is and does not need to match the name of your class.
+    //DataCollection(Types::Class, classStr(rsmTutOrderLineClass)), – This specifies the name of the class that the incoming data should be mapped to. In our case, the data we will send it will match the parm methods we have created in the rsmTutOrderLineClass class.
+    //AifCollectionTypeAttribute(‘_rsmTutOrderLineClassArray’, Types::Class, classStr(rsmTutOrderLineClass)), – This lets the system know that the name of our parameter in our Service class method will be named _rsmTutoOrderLineClassArray. (You can name the variable whatever you would like.) And that it will be a list of objects.
+    //AifCollectionTypeAttribute(‘return’, Types::Class, classStr(rsmTutOrderLineClass))] -This tells the system that parm method will return a list of objects of type rsmTutOrderLineClass
     [DataMemberAttribute("DETAILSUBITEM"),
-        DataCollectionAttribute(Types::Class, classStr(HDG_IF_InventTableDetailItemRequestModel))]
+        DataCollectionAttribute(Types::Class, classStr(HDG_IF_InventTableDetailItemRequestModel)),
+        AifCollectionTypeAttribute('DETAILSUBITEM', Types::Class, classStr(HDG_IF_InventTableDetailItemRequestModel)),
+        AifCollectionTypeAttribute('return', Types::Class, classStr(HDG_IF_InventTableDetailItemRequestModel))]
     public List DETAILSUBITEM(List _DETAILSUBITEM = DETAILSUBITEM)
     {
         DETAILSUBITEM = _DETAILSUBITEM;
