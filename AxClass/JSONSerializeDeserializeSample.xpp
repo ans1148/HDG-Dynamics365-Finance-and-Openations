@@ -174,11 +174,12 @@ class HDG_IF_InventTablePostToMES
         ListEnumerator inventTableValue;
 
         List subItemValues = new List(Types::Class);
+        // ListEnumerator
         ListEnumerator subItemValue;
 
         inventTableValues = FormJsonSerializer::deserializeCollection(classNum(List), json, Types::Class, ClassStr(HDG_IF_InventTableRequestModel));
         inventTableValue = inventTableValues.getEnumerator();
-
+        
         if(inventTableValues.elements() > 0)
         {
             while(inventTableValue.moveNext())
@@ -192,6 +193,18 @@ class HDG_IF_InventTablePostToMES
                 {
                     subItemModel = subItemValue.current();
                 }
+            }
+        }
+
+        // ListIterator
+        ListIterator   literator;
+        if (inventTableValues.elements() > 0)
+        {
+            literator = new ListIterator(inventTableValues);
+            while (literator.more())
+            {
+                subItemModel = literator.value();
+                literator.next();
             }
         }
     }
